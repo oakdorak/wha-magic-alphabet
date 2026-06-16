@@ -24,7 +24,6 @@
         }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        /* UI Containers */
         #ui { 
             position: absolute; 
             top: env(safe-area-inset-top, 20px); 
@@ -63,32 +62,12 @@
         
         #status { color: var(--accent); font-size: 14px; font-family: 'Courier New', monospace; text-transform: uppercase; }
         
-        /* Custom Slider Styling */
         .slider-container { display: flex; flex-direction: column; gap: 5px; }
         .slider-label { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 150px;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            background: var(--accent);
-            border-radius: 2px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            background: var(--ivory);
-            cursor: pointer;
-            margin-top: -7px;
-            box-shadow: 0 0 10px rgba(242, 239, 217, 0.5);
-        }
+        input[type=range] { -webkit-appearance: none; width: 150px; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--accent); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--ivory); cursor: pointer; margin-top: -7px; }
 
-        /* Ivory Reset Button */
         #resetBtn {
             position: absolute;
             bottom: 40px;
@@ -111,27 +90,19 @@
         #resetBtn:active { transform: translateX(-50%) scale(0.9); }
         #resetBtn::after { content: '✨'; font-size: 24px; opacity: 0.6; }
 
-        select {
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--accent);
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 11px;
-            outline: none;
-        }
+        select { background: var(--bg); color: var(--text); border: 1px solid var(--accent); padding: 5px; border-radius: 4px; font-size: 11px; outline: none; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_CALIBRADA_V5</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">VECTOR_MAGIC_V6</h1>
         <div id="status">TOCA PARA EMPEZAR</div>
     </div>
     
     <div id="controls">
         <div class="slider-container">
             <span class="slider-label" id="diffLabel">DIFICULTAD: NORMAL</span>
-            <input type="range" id="diffSlider" min="50" max="250" value="150" step="10">
+            <input type="range" id="diffSlider" min="40" max="180" value="100" step="5">
         </div>
         <select id="langSelect">
             <option value="es-MX">Español (MX)</option>
@@ -141,7 +112,6 @@
     </div>
 
     <button id="resetBtn"></button>
-
     <div class="letter-guide" id="guide">A</div>
     <canvas id="magicCanvas"></canvas>
 
@@ -162,13 +132,60 @@
         
         let allStrokes = [];
         let currentStroke = [];
-        let touchedPoints = new Set();
-
-        // Configuración de Calibración
-        let detectionThreshold = 150; // Invertido: Mayor valor = Más fácil (área de captura más grande)
+        
+        // --- MOTOR DE COLISIÓN VECTORIAL ---
+        let currentTargets = [];
+        let hitCount = 0;
+        let detectionThreshold = 100; 
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        // Definición de Esqueletos Vectoriales (Normalizados -1 a 1)
+        const LetterSkeletons = {
+            'A': [{x:0, y:-0.7}, {x:-0.5, y:0.7}, {x:0.5, y:0.7}, {x:0, y:0}],
+            'B': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:0.3, y:0.3}],
+            'C': [{x:0.5, y:-0.5}, {x:-0.3, y:0}, {x:0.5, y:0.5}],
+            'D': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.5, y:0}],
+            'E': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.7}, {x:0.3, y:0}, {x:0.3, y:0.7}],
+            'F': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.7}, {x:0.3, y:0}],
+            'G': [{x:0.5, y:-0.5}, {x:-0.3, y:0}, {x:0.5, y:0.5}, {x:0.5, y:0}],
+            'H': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:-0.7}, {x:0.4, y:0.7}, {x:0, y:0}],
+            'I': [{x:0, y:-0.7}, {x:0, y:0.7}],
+            'J': [{x:0.3, y:-0.7}, {x:0.3, y:0.4}, {x:-0.2, y:0.7}],
+            'K': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0, y:0}, {x:0.4, y:-0.7}, {x:0.4, y:0.7}],
+            'L': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:0.7}],
+            'M': [{x:-0.5, y:0.7}, {x:-0.5, y:-0.7}, {x:0, y:0}, {x:0.5, y:-0.7}, {x:0.5, y:0.7}],
+            'N': [{x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.4, y:0.7}, {x:0.4, y:-0.7}],
+            'O': [{x:0, y:-0.7}, {x:-0.5, y:0}, {x:0, y:0.7}, {x:0.5, y:0}],
+            'P': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}],
+            'Q': [{x:0, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:0}, {x:-0.5, y:0}, {x:0.4, y:0.4}],
+            'R': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:0.4, y:0.7}],
+            'S': [{x:0.4, y:-0.5}, {x:0, y:-0.7}, {x:-0.4, y:-0.3}, {x:0, y:0}, {x:0.4, y:0.3}, {x:0, y:0.7}, {x:-0.4, y:0.5}],
+            'T': [{x:0, y:-0.7}, {x:0, y:0.7}, {x:-0.5, y:-0.7}, {x:0.5, y:-0.7}],
+            'U': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.4}, {x:0, y:0.7}, {x:0.4, y:0.4}, {x:0.4, y:-0.7}],
+            'V': [{x:-0.5, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:-0.7}],
+            'W': [{x:-0.5, y:-0.7}, {x:-0.3, y:0.7}, {x:0, y:-0.2}, {x:0.3, y:0.7}, {x:0.5, y:-0.7}],
+            'X': [{x:-0.5, y:-0.7}, {x:0.5, y:0.7}, {x:0.5, y:-0.7}, {x:-0.5, y:0.7}],
+            'Y': [{x:-0.5, y:-0.7}, {x:0, y:0}, {x:0.5, y:-0.7}, {x:0, y:0.7}],
+            'Z': [{x:-0.5, y:-0.7}, {x:0.5, y:-0.7}, {x:-0.5, y:0.7}, {x:0.5, y:0.7}]
+        };
+
+        function initLetterTargets() {
+            const letter = alphabet[currentLetterIndex];
+            const skeleton = LetterSkeletons[letter] || [];
+            const h = canvas.height;
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const scale = h * 0.45;
+
+            currentTargets = skeleton.map(p => ({
+                x: cx + p.x * scale,
+                y: cy + p.y * scale,
+                hit: false
+            }));
+            hitCount = 0;
+        }
 
         class Particle {
             constructor(x, y, color, sizeMult = 1) {
@@ -178,21 +195,12 @@
                 this.speedY = Math.random() * 3 - 1.5;
                 this.color = color;
                 this.life = 1.0;
-                this.decay = Math.random() * 0.01 + 0.005;
+                this.decay = Math.random() * 0.01 + 0.01;
             }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= this.decay;
-            }
+            update() { this.x += this.speedX; this.y += this.speedY; this.life -= this.decay; }
             draw() {
-                ctx.save();
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.life;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
+                ctx.save(); ctx.fillStyle = this.color; ctx.globalAlpha = this.life;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
             }
         }
 
@@ -203,61 +211,45 @@
             window.speechSynthesis.speak(utterance);
         }
 
-        function getTargetZones() {
-            const w = canvas.width;
-            const h = canvas.height;
-            const cx = w / 2;
-            const cy = h / 2;
-            const r = h * 0.28; 
-            
-            return [
-                { id: 1, x: cx - r, y: cy - r }, 
-                { id: 2, x: cx + r, y: cy - r }, 
-                { id: 3, x: cx - r, y: cy + r }, 
-                { id: 4, x: cx + r, y: cy + r }, 
-                { id: 5, x: cx,     y: cy     }  
-            ];
-        }
-
         function checkCompletion(x, y) {
-            const zones = getTargetZones();
-            zones.forEach(z => {
-                const dist = Math.hypot(x - z.x, y - z.y);
-                if (dist < detectionThreshold) {
-                    touchedPoints.add(z.id);
+            currentTargets.forEach(t => {
+                if (!t.hit) {
+                    const dist = Math.hypot(x - t.x, y - t.y);
+                    if (dist < detectionThreshold) {
+                        t.hit = true;
+                        hitCount++;
+                        // Visual hint for hit
+                        for(let i=0; i<5; i++) particles.push(new Particle(t.x, t.y, '#a8b28a', 0.5));
+                    }
                 }
             });
 
-            if (touchedPoints.size >= 4) { // Requiere un poco más de precisión por defecto
+            if (hitCount >= currentTargets.length) {
                 completeHechizo();
             }
         }
 
         function completeHechizo() {
-            if (status.innerText.includes("ÉXITO")) return;
-            
+            if (status.innerText.includes("✨")) return;
             const letter = alphabet[currentLetterIndex];
             status.innerText = `✨ HECHIZO: ${letter} ✨`;
             speakLetter(letter);
 
-            for(let i=0; i<100; i++) {
-                particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*400, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 2));
+            for(let i=0; i<80; i++) {
+                particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*400, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 2.5));
             }
 
-            setTimeout(() => nextLetter(), 2000);
+            setTimeout(() => {
+                currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
+                resetState();
+            }, 2500);
         }
 
-        function nextLetter() {
-            currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
-            resetCanvas();
-            guide.innerText = alphabet[currentLetterIndex];
-            status.innerText = "SIGUIENTE TRAZO...";
-        }
-
-        function resetCanvas() {
+        function resetState() {
             allStrokes = []; currentStroke = []; particles = [];
-            touchedPoints.clear();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            guide.innerText = alphabet[currentLetterIndex];
+            status.innerText = "DIBUJA LA LETRA";
+            initLetterTargets();
         }
 
         function handleInput(e) {
@@ -265,7 +257,6 @@
             if (!drawing) return;
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
-            
             if (x === undefined || y === undefined) return;
 
             currentStroke.push({x, y});
@@ -277,7 +268,6 @@
 
         function drawEverything() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             ctx.lineJoin = 'round'; ctx.lineCap = 'round';
             ctx.shadowBlur = 15; ctx.shadowColor = '#896ab0';
             ctx.strokeStyle = '#896ab0';
@@ -285,30 +275,25 @@
 
             [...allStrokes, currentStroke].forEach(stroke => {
                 if (stroke.length < 2) return;
-                ctx.beginPath();
-                ctx.moveTo(stroke[0].x, stroke[0].y);
+                ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
                 for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
                 ctx.stroke();
             });
 
             for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
+                particles[i].update(); particles[i].draw();
                 if (particles[i].life <= 0) { particles.splice(i, 1); i--; }
             }
             requestAnimationFrame(drawEverything);
         }
 
-        // Logic for Difficulty Slider
         diffSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
-            // Invert logic for the user: higher value on slider = harder
-            // We use (300 - val) to make the threshold smaller as slider goes up
-            detectionThreshold = 300 - val;
-            
+            // Higher slider = Harder = Smaller threshold
+            detectionThreshold = 220 - val;
             let label = "NORMAL";
-            if (val < 100) label = "FÁCIL";
-            if (val > 200) label = "DIFÍCIL";
+            if (val < 70) label = "FÁCIL";
+            if (val > 140) label = "DIFÍCIL";
             diffLabel.innerText = `DIFICULTAD: ${label}`;
         });
 
@@ -321,10 +306,11 @@
 
         resetBtn.addEventListener('click', () => {
             for(let i=0; i<30; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#f2efd9', 2));
-            resetCanvas();
-            status.innerText = "REINICIANDO...";
+            resetState();
+            status.innerText = "VOLVIENDO A EMPEZAR...";
         });
 
+        initLetterTargets();
         drawEverything();
         window.addEventListener('click', () => { if (status.innerText === "TOCA PARA EMPEZAR") status.innerText = "DIBUJA LA LETRA"; }, {once: true});
     </script>
