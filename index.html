@@ -23,6 +23,8 @@
             cursor: crosshair;
         }
         canvas { display: block; position: absolute; top: 0; left: 0; }
+        
+        /* UI Containers */
         #ui { 
             position: absolute; 
             top: env(safe-area-inset-top, 20px); 
@@ -30,6 +32,21 @@
             pointer-events: none; 
             z-index: 100; 
         }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            background: rgba(35, 31, 36, 0.8);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--gold);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            backdrop-filter: blur(5px);
+        }
+
         .letter-guide { 
             position: absolute; 
             top: 50%; 
@@ -43,9 +60,35 @@
             letter-spacing: -20px;
             font-variant-ligatures: none;
         }
-        #status { color: var(--accent); font-size: 14px; margin-top: 10px; font-family: 'Courier New', monospace; text-transform: uppercase; }
         
-        /* Botón Mágico Marfil */
+        #status { color: var(--accent); font-size: 14px; font-family: 'Courier New', monospace; text-transform: uppercase; }
+        
+        /* Custom Slider Styling */
+        .slider-container { display: flex; flex-direction: column; gap: 5px; }
+        .slider-label { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 150px;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: var(--ivory);
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 10px rgba(242, 239, 217, 0.5);
+        }
+
+        /* Ivory Reset Button */
         #resetBtn {
             position: absolute;
             bottom: 40px;
@@ -62,47 +105,34 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.2s;
             outline: none;
-            -webkit-tap-highlight-color: transparent;
         }
-        #resetBtn:active {
-            transform: translateX(-50%) scale(0.9);
-            box-shadow: 0 0 40px rgba(242, 239, 217, 0.6);
-        }
-        #resetBtn::after {
-            content: '✨';
-            font-size: 24px;
-            opacity: 0.6;
-        }
+        #resetBtn:active { transform: translateX(-50%) scale(0.9); }
+        #resetBtn::after { content: '✨'; font-size: 24px; opacity: 0.6; }
 
-        #settings {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 101;
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            gap: 10px;
-        }
         select {
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--accent);
-            font-size: 12px;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 11px;
             outline: none;
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_FONÉTICA_V4</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_CALIBRADA_V5</h1>
         <div id="status">TOCA PARA EMPEZAR</div>
     </div>
     
-    <div id="settings">
+    <div id="controls">
+        <div class="slider-container">
+            <span class="slider-label" id="diffLabel">DIFICULTAD: NORMAL</span>
+            <input type="range" id="diffSlider" min="50" max="250" value="150" step="10">
+        </div>
         <select id="langSelect">
             <option value="es-MX">Español (MX)</option>
             <option value="en-US">English (US)</option>
@@ -110,7 +140,7 @@
         </select>
     </div>
 
-    <button id="resetBtn" title="Volver a empezar"></button>
+    <button id="resetBtn"></button>
 
     <div class="letter-guide" id="guide">A</div>
     <canvas id="magicCanvas"></canvas>
@@ -122,19 +152,20 @@
         const status = document.getElementById('status');
         const langSelect = document.getElementById('langSelect');
         const resetBtn = document.getElementById('resetBtn');
+        const diffSlider = document.getElementById('diffSlider');
+        const diffLabel = document.getElementById('diffLabel');
 
         let drawing = false;
         let particles = [];
         let currentLetterIndex = 0;
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         
-        // Memoria de trazos para persistencia
         let allStrokes = [];
         let currentStroke = [];
-
-        // Lógica de colisión mejorada
         let touchedPoints = new Set();
-        const detectionThreshold = 80; // Sensibilidad de detección
+
+        // Configuración de Calibración
+        let detectionThreshold = 150; // Invertido: Mayor valor = Más fácil (área de captura más grande)
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -177,14 +208,14 @@
             const h = canvas.height;
             const cx = w / 2;
             const cy = h / 2;
-            const r = h * 0.25; // Radio aproximado de la letra
+            const r = h * 0.28; 
             
             return [
-                { id: 1, x: cx - r, y: cy - r }, // Top Left
-                { id: 2, x: cx + r, y: cy - r }, // Top Right
-                { id: 3, x: cx - r, y: cy + r }, // Bottom Left
-                { id: 4, x: cx + r, y: cy + r }, // Bottom Right
-                { id: 5, x: cx,     y: cy     }  // Center
+                { id: 1, x: cx - r, y: cy - r }, 
+                { id: 2, x: cx + r, y: cy - r }, 
+                { id: 3, x: cx - r, y: cy + r }, 
+                { id: 4, x: cx + r, y: cy + r }, 
+                { id: 5, x: cx,     y: cy     }  
             ];
         }
 
@@ -197,8 +228,7 @@
                 }
             });
 
-            // Si se tocan 3 de las 5 zonas críticas, avanzamos
-            if (touchedPoints.size >= 3) {
+            if (touchedPoints.size >= 4) { // Requiere un poco más de precisión por defecto
                 completeHechizo();
             }
         }
@@ -207,30 +237,25 @@
             if (status.innerText.includes("ÉXITO")) return;
             
             const letter = alphabet[currentLetterIndex];
-            status.innerText = `✨ ¡MAGIA! LETRA ${letter} ✨`;
+            status.innerText = `✨ HECHIZO: ${letter} ✨`;
             speakLetter(letter);
 
-            // Explosión mágica masiva
             for(let i=0; i<100; i++) {
                 particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*400, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 2));
             }
 
-            setTimeout(() => {
-                nextLetter();
-            }, 2000);
+            setTimeout(() => nextLetter(), 2000);
         }
 
         function nextLetter() {
             currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
             resetCanvas();
             guide.innerText = alphabet[currentLetterIndex];
-            status.innerText = "SIGUIENTE HECHIZO...";
+            status.innerText = "SIGUIENTE TRAZO...";
         }
 
         function resetCanvas() {
-            allStrokes = [];
-            currentStroke = [];
-            particles = [];
+            allStrokes = []; currentStroke = []; particles = [];
             touchedPoints.clear();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
@@ -246,7 +271,6 @@
             currentStroke.push({x, y});
             checkCompletion(x, y);
 
-            // Partículas mágicas al trazar
             if (Math.random() > 0.2) particles.push(new Particle(x, y, '#896ab0'));
             if (Math.random() > 0.8) particles.push(new Particle(x, y, '#f2efd9', 1.2));
         }
@@ -254,71 +278,55 @@
         function drawEverything() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 1. Dibujar trazos persistentes
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#896ab0';
+            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            ctx.shadowBlur = 15; ctx.shadowColor = '#896ab0';
             ctx.strokeStyle = '#896ab0';
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 6;
 
             [...allStrokes, currentStroke].forEach(stroke => {
                 if (stroke.length < 2) return;
                 ctx.beginPath();
                 ctx.moveTo(stroke[0].x, stroke[0].y);
-                for (let i = 1; i < stroke.length; i++) {
-                    ctx.lineTo(stroke[i].x, stroke[i].y);
-                }
+                for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
                 ctx.stroke();
             });
 
-            // 2. Dibujar partículas mágicas
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update();
                 particles[i].draw();
                 if (particles[i].life <= 0) { particles.splice(i, 1); i--; }
             }
-
             requestAnimationFrame(drawEverything);
         }
 
-        canvas.addEventListener('mousedown', (e) => { drawing = true; currentStroke = []; handleInput(e); });
-        canvas.addEventListener('touchstart', (e) => { drawing = true; currentStroke = []; handleInput(e); });
-        
-        window.addEventListener('mousemove', handleInput);
-        window.addEventListener('touchmove', handleInput, { passive: false });
-        
-        window.addEventListener('mouseup', () => { 
-            if (currentStroke.length > 0) allStrokes.push(currentStroke);
-            drawing = false; 
-            currentStroke = []; 
-        });
-        window.addEventListener('touchend', () => { 
-            if (currentStroke.length > 0) allStrokes.push(currentStroke);
-            drawing = false; 
-            currentStroke = []; 
+        // Logic for Difficulty Slider
+        diffSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            // Invert logic for the user: higher value on slider = harder
+            // We use (300 - val) to make the threshold smaller as slider goes up
+            detectionThreshold = 300 - val;
+            
+            let label = "NORMAL";
+            if (val < 100) label = "FÁCIL";
+            if (val > 200) label = "DIFÍCIL";
+            diffLabel.innerText = `DIFICULTAD: ${label}`;
         });
 
+        canvas.addEventListener('mousedown', (e) => { drawing = true; currentStroke = []; handleInput(e); });
+        canvas.addEventListener('touchstart', (e) => { drawing = true; currentStroke = []; handleInput(e); });
+        window.addEventListener('mousemove', handleInput);
+        window.addEventListener('touchmove', handleInput, { passive: false });
+        window.addEventListener('mouseup', () => { if (currentStroke.length > 0) allStrokes.push(currentStroke); drawing = false; });
+        window.addEventListener('touchend', () => { if (currentStroke.length > 0) allStrokes.push(currentStroke); drawing = false; });
+
         resetBtn.addEventListener('click', () => {
-            // Animación de reset
             for(let i=0; i<30; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#f2efd9', 2));
             resetCanvas();
-            status.innerText = "VOLVIENDO A EMPEZAR...";
+            status.innerText = "REINICIANDO...";
         });
 
         drawEverything();
-
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') resetCanvas();
-        });
-
-        // Habilitar audio
-        window.addEventListener('click', () => {
-            if (status.innerText === "TOCA PARA EMPEZAR") {
-                status.innerText = "DIBUJA LA LETRA";
-            }
-        }, {once: true});
-
+        window.addEventListener('click', () => { if (status.innerText === "TOCA PARA EMPEZAR") status.innerText = "DIBUJA LA LETRA"; }, {once: true});
     </script>
 </body>
 </html>
