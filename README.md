@@ -5,7 +5,8 @@ Based on the magic system from *Witch Hat Atelier*, this tool transforms handwri
 
 ## ✨ Features
 - **Minimalist "Zen" Interface:** Low cognitive load, high visual wonder.
-- **Auto-Next Detection:** Uses a vector-based collision system to detect when a letter is completed.
+- **Adjustable Difficulty:** Dynamic calibration slider (Easy, Normal, Hard) to adapt to the child's age and motor skill level.
+- **Auto-Next Detection:** Uses a vector-based "Power Zone" system to detect when a letter is completed.
 - **Phonetic Reinforcement (TTS):** Speaks the letter out loud upon completion. Supports multiple languages (Spanish MX, English US, Japanese).
 - **Mobile Responsive:** Full touch support for smartphones and tablets.
 - **Wacom/Projector Optimized:** Works perfectly in "Artist Mode" for immersive projections.
@@ -22,11 +23,16 @@ This is a single-file web application. No dependencies required.
 3. Click anywhere once to enable audio.
 4. **Controls:**
    - **Drawing:** Use mouse, touch, or pen.
-   - **Spacebar:** Clear the magic.
-   - **Keys A-Z:** Manual letter selection.
+   - **Magical Reset:** Use the ivory button at the bottom to start over.
+   - **Difficulty Slider:** Calibrate detection sensitivity in real-time.
 
-## 🏛️ Part of the MAIAH Architecture
-This project is an extension of the **PonyTail Engine** for physical projections in Node B.
+## 🙏 Credits & Inspiration
+This project is heavily inspired by the conceptual and technical work of **Nerva dof**, who first translated the *Witch Hat Atelier* magic system into a functional visual programming language.
+
+- **Original Concept & Logic:** [Nerva dof (ytnrvdf)](https://github.com/ytnrvdf)
+- **Inspirational Video:** [I Built a Witch Hat Atelier Spell Simulator](https://www.youtube.com/watch?v=zVWYW0K3ikg)
+
+This implementation adapts that logic into a specialized therapeutic tool for calligraphy and motor skill development.
 
 ---
-*"There are no wrong strokes, only magic that hasn't found its form yet."*
+*Inspired by the magic of Kamome Shirahama's Witch Hat Atelier.*
