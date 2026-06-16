@@ -115,7 +115,7 @@
     </div>
 
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">BLOOM_MAGIC_V16</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">FLOW_MAGIC_V17</h1>
         <div id="status">INICIANDO...</div>
     </div>
     
@@ -165,6 +165,7 @@
         let isSystemReady = false;
         let guidePulse = 0;
         let showFlowers = false;
+        let isLetterFinishedInternally = false; // Flag para V17
 
         const themes = ['', 'theme-serene', 'theme-nature', 'theme-rainbow'];
         let currentThemeIndex = 0;
@@ -203,7 +204,7 @@
             const skeleton = LetterSkeletons[alphabet[currentLetterIndex]] || [];
             const scale = Math.min(canvas.height, canvas.width) * 0.45;
             currentTargets = skeleton.map(p => ({ x: canvas.width/2 + p.x * scale, y: canvas.height/2 + p.y * scale, hit: false }));
-            nextTargetIndex = 0; guide.classList.remove('active'); showFlowers = false; flowers = [];
+            nextTargetIndex = 0; guide.classList.remove('active'); showFlowers = false; flowers = []; isLetterFinishedInternally = false;
         }
 
         function cycleTheme() {
@@ -216,7 +217,7 @@
                 this.x = x; this.y = y; this.size = (Math.random() * 4 + 2) * sizeMult;
                 this.speedX = isTracer ? (Math.random()-0.5)*3 : (Math.random()*4 - 2);
                 this.speedY = isTracer ? (Math.random()-0.5)*3 : (Math.random()*4 - 2);
-                this.color = color; this.life = 1.0; this.decay = isTracer ? 0.04 : (Math.random() * 0.01 + 0.01);
+                this.color = color; this.life = 1.0; this.decay = isTracer ? 0.05 : (Math.random() * 0.01 + 0.01);
             }
             update() { this.x += this.speedX; this.y += this.speedY; this.life -= this.decay; }
             draw() { ctx.save(); ctx.fillStyle = this.color; ctx.globalAlpha = this.life; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
@@ -239,7 +240,6 @@
                     ctx.rotate(Math.PI / 3);
                     ctx.beginPath(); ctx.ellipse(0, 40, 20, 40, 0, 0, Math.PI * 2); ctx.fill();
                 }
-                // Centro de la flor
                 ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
                 ctx.restore();
             }
@@ -271,7 +271,7 @@
         }
 
         function checkCompletion(x, y) {
-            if (!isSystemReady || showFlowers) return;
+            if (!isSystemReady || showFlowers || isLetterFinishedInternally) return;
             const target = currentTargets[nextTargetIndex];
             if (!target) return;
             if (Math.hypot(x - target.x, y - target.y) < detectionThreshold) {
@@ -279,7 +279,12 @@
                 const colorSuccess = getComputedStyle(document.documentElement).getPropertyValue('--success');
                 for(let i=0; i<10; i++) particles.push(new Particle(target.x, target.y, colorSuccess, 0.8));
                 if (nextTargetIndex > currentTargets.length / 2) guide.classList.add('active');
-                if (nextTargetIndex >= currentTargets.length) completeHechizo();
+                
+                // V17: Marcar como finalizado internamente, pero esperar al release
+                if (nextTargetIndex >= currentTargets.length) {
+                    isLetterFinishedInternally = true;
+                    status.innerText = "¡YA CASI! SUELTA PARA VER LA MAGIA";
+                }
             }
         }
 
@@ -291,13 +296,12 @@
             const compliments = ["¡Qué maravilla!", "¡Muy bien!", "¡Lo hiciste genial!", "¡Precioso!", "¡Qué hermoso!"];
             speakNurturing(`${compliments[Math.floor(Math.random() * compliments.length)]}... ${letter}`);
             
-            // --- DOPAMINE BLOOM (V16): Sincronización con el Tema ---
             const colorSuccess = getComputedStyle(document.documentElement).getPropertyValue('--success');
             const colorAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent');
             const colorGold = getComputedStyle(document.documentElement).getPropertyValue('--gold');
             const palette = [colorSuccess, colorAccent, colorGold];
 
-            for(let i=0; i<40; i++) { // Más flores (40)
+            for(let i=0; i<45; i++) {
                 const rx = Math.random() * canvas.width;
                 const ry = Math.random() * canvas.height;
                 const rColor = palette[Math.floor(Math.random() * palette.length)];
@@ -307,7 +311,7 @@
             setTimeout(() => { currentLetterIndex = (currentLetterIndex + 1) % alphabet.length; resetState(); }, 4000);
         }
 
-        function resetState() { allStrokes = []; currentStroke = []; particles = []; flowers = []; showFlowers = false; guide.innerText = alphabet[currentLetterIndex]; status.innerText = "TEJE LA LUZ"; initLetterTargets(); }
+        function resetState() { allStrokes = []; currentStroke = []; particles = []; flowers = []; showFlowers = false; isLetterFinishedInternally = false; guide.innerText = alphabet[currentLetterIndex]; status.innerText = "TEJE LA LUZ"; initLetterTargets(); }
 
         function handleInput(e) {
             e.preventDefault();
@@ -328,10 +332,9 @@
             const colorSuccess = getComputedStyle(document.documentElement).getPropertyValue('--success');
             const colorAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent');
 
-            // Dibujar flores primero (detrás del trazo)
             flowers.forEach(f => { f.update(); f.draw(); });
 
-            if (isSystemReady && !showFlowers && currentTargets[nextTargetIndex]) {
+            if (isSystemReady && !showFlowers && !isLetterFinishedInternally && currentTargets[nextTargetIndex]) {
                 const target = currentTargets[nextTargetIndex]; guidePulse += 0.06; const size = 30 + Math.sin(guidePulse) * 12;
                 ctx.save(); ctx.shadowBlur = 40; ctx.shadowColor = colorSuccess; ctx.fillStyle = colorWisp;
                 ctx.beginPath(); ctx.arc(target.x, target.y, size, 0, Math.PI * 2); ctx.fill();
@@ -365,7 +368,15 @@
         canvas.addEventListener('touchstart', (e) => { drawing = true; currentStroke = []; handleInput(e); });
         window.addEventListener('mousemove', handleInput);
         window.addEventListener('touchmove', handleInput, { passive: false });
-        const endDrawing = () => { if (currentStroke.length > 0) allStrokes.push(currentStroke); drawing = false; currentStroke = []; };
+        
+        const endDrawing = () => { 
+            if (currentStroke.length > 0) allStrokes.push(currentStroke); 
+            drawing = false; 
+            currentStroke = [];
+            // V17: Si ya se completó la letra internamente, disparar la magia al soltar
+            if (isLetterFinishedInternally && !showFlowers) completeHechizo();
+        };
+        
         window.addEventListener('mouseup', endDrawing); window.addEventListener('touchend', endDrawing);
         resetBtn.addEventListener('click', () => { window.speechSynthesis.cancel(); resetState(); status.innerText = "MAGIA REINICIADA"; for(let i=0; i<60; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#FFFFFF', 3)); });
         window.addEventListener('resize', resize); resize(); drawEverything();
