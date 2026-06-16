@@ -39,7 +39,7 @@
         }
         .letter-guide { 
             font-size: min(75vh, 75vw);
-            color: rgba(155, 142, 108, 0.05); 
+            color: rgba(155, 142, 108, 0.04); 
             user-select: none; font-weight: 100;
             letter-spacing: -10px; font-variant-ligatures: none;
         }
@@ -67,8 +67,8 @@
 </head>
 <body>
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">GUIDED_MAGIC_V8</h1>
-        <div id="status">INICIAR SECUENCIA</div>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">TRACER_MAGIC_V9</h1>
+        <div id="status">TOCA PARA EMPEZAR</div>
     </div>
     
     <div id="controls">
@@ -111,49 +111,35 @@
         let detectionThreshold = 100; 
         let enforceSequence = true;
 
-        // --- LÓGICA DE GUÍA VISUAL (V8) ---
         let guidePulse = 0;
-        let showGuideWisp = true;
+        let currentX = 0, currentY = 0; // Para el Tracer real-time
 
         const LetterSkeletons = {
-            'A': [
-                {x:0, y:-0.7, hint: "arriba"}, {x:-0.4, y:0.7, hint: "abajo"}, 
-                {x:0, y:-0.7, hint: "arriba"}, {x:0.4, y:0.7, hint: "abajo"}, 
-                {x:-0.2, y:0.1, hint: "cruza"}, {x:0.2, y:0.1, hint: "derecha"}
-            ],
-            'B': [
-                {x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, 
-                {x:-0.4, y:-0.7}, {x:0.3, y:-0.4}, {x:-0.4, y:0}, 
-                {x:-0.4, y:0}, {x:0.3, y:0.4}, {x:-0.4, y:0.7}
-            ],
+            'A': [{x:0, y:-0.7}, {x:-0.4, y:0.7}, {x:0, y:-0.7}, {x:0.4, y:0.7}, {x:-0.2, y:0.1}, {x:0.2, y:0.1}],
+            'B': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.3, y:-0.4}, {x:-0.4, y:0}, {x:0.3, y:0.4}, {x:-0.4, y:0.7}],
             'C': [{x:0.5, y:-0.5}, {x:0, y:-0.7}, {x:-0.4, y:0}, {x:0, y:0.7}, {x:0.5, y:0.5}],
             'D': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.5, y:0}, {x:-0.4, y:0.7}],
-            'E': [
-                {x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, 
-                {x:-0.4, y:-0.7}, {x:0.4, y:-0.7}, 
-                {x:-0.4, y:0}, {x:0.3, y:0}, 
-                {x:-0.4, y:0.7}, {x:0.4, y:0.7}
-            ],
+            'E': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0}, {x:0.3, y:0}, {x:-0.4, y:0.7}, {x:0.4, y:0.7}],
             'F': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0}, {x:0.3, y:0}],
             'G': [{x:0.5, y:-0.5}, {x:-0.4, y:0}, {x:0, y:0.7}, {x:0.5, y:0.3}, {x:0.2, y:0.3}],
             'H': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:-0.7}, {x:0.4, y:0.7}, {x:-0.4, y:0}, {x:0.4, y:0}],
-            'I': [{x:0, y:-0.7}, {x:0, y:0.7}, {x:-0.3, y:-0.7}, {x:0.3, y:-0.7}, {x:-0.3, y:0.7}, {x:0.3, y:0.7}],
-            'J': [{x:-0.3, y:-0.7}, {x:0.3, y:-0.7}, {x:0, y:-0.7}, {x:0, y:0.5}, {x:-0.3, y:0.7}],
+            'I': [{x:0, y:-0.7}, {x:0, y:0.7}],
+            'J': [{x:0, y:-0.7}, {x:0, y:0.5}, {x:-0.3, y:0.7}],
             'K': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0}, {x:0.4, y:0.7}],
             'L': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:0.7}],
             'M': [{x:-0.5, y:0.7}, {x:-0.5, y:-0.7}, {x:0, y:0}, {x:0.5, y:-0.7}, {x:0.5, y:0.7}],
             'N': [{x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.4, y:0.7}, {x:0.4, y:-0.7}],
             'O': [{x:0, y:-0.7}, {x:-0.5, y:0}, {x:0, y:0.7}, {x:0.5, y:0}, {x:0, y:-0.7}],
-            'P': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.3, y:-0.3}, {x:-0.4, y:0}],
+            'P': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:-0.4, y:0}],
             'Q': [{x:0, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:0}, {x:-0.5, y:0}, {x:0.2, y:0.2}, {x:0.5, y:0.6}],
-            'R': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:-0.4, y:-0.7}, {x:0.3, y:-0.3}, {x:-0.4, y:0}, {x:0.4, y:0.7}],
+            'R': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:0.4, y:0.7}],
             'S': [{x:0.4, y:-0.5}, {x:0, y:-0.7}, {x:-0.4, y:-0.3}, {x:0, y:0}, {x:0.4, y:0.3}, {x:0, y:0.7}, {x:-0.4, y:0.5}],
             'T': [{x:-0.5, y:-0.7}, {x:0.5, y:-0.7}, {x:0, y:-0.7}, {x:0, y:0.7}],
             'U': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.4}, {x:0, y:0.7}, {x:0.4, y:0.4}, {x:0.4, y:-0.7}],
             'V': [{x:-0.5, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:-0.7}],
             'W': [{x:-0.5, y:-0.7}, {x:-0.3, y:0.7}, {x:0, y:0.1}, {x:0.3, y:0.7}, {x:0.5, y:-0.7}],
             'X': [{x:-0.4, y:-0.7}, {x:0.4, y:0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0.7}],
-            'Y': [{x:-0.4, y:-0.7}, {x:0, y:0}, {x:0.4, y:-0.7}, {x:0, y:0}, {x:0, y:0.7}],
+            'Y': [{x:-0.4, y:-0.7}, {x:0, y:0}, {x:0.4, y:-0.7}, {x:0, y:0.7}],
             'Z': [{x:-0.4, y:-0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:0.7}]
         };
 
@@ -169,21 +155,20 @@
             currentTargets = skeleton.map((p, index) => ({
                 x: cx + p.x * scale,
                 y: cy + p.y * scale,
-                hit: false, hint: p.hint || ""
+                hit: false
             }));
             nextTargetIndex = 0;
-            showGuideWisp = true;
         }
 
         class Particle {
-            constructor(x, y, color, sizeMult = 1) {
+            constructor(x, y, color, sizeMult = 1, isTracer = false) {
                 this.x = x; this.y = y;
-                this.size = (Math.random() * 5 + 2) * sizeMult;
-                this.speedX = Math.random() * 3 - 1.5;
-                this.speedY = Math.random() * 3 - 1.5;
+                this.size = (Math.random() * 4 + 2) * sizeMult;
+                this.speedX = isTracer ? (Math.random()-0.5)*2 : (Math.random()*3 - 1.5);
+                this.speedY = isTracer ? (Math.random()-0.5)*2 : (Math.random()*3 - 1.5);
                 this.color = color;
                 this.life = 1.0;
-                this.decay = Math.random() * 0.01 + 0.01;
+                this.decay = isTracer ? 0.03 : (Math.random() * 0.01 + 0.01);
             }
             update() { this.x += this.speedX; this.y += this.speedY; this.life -= this.decay; }
             draw() {
@@ -207,25 +192,17 @@
             if (Math.hypot(x - target.x, y - target.y) < detectionThreshold) {
                 target.hit = true;
                 nextTargetIndex++;
-                for(let i=0; i<10; i++) particles.push(new Particle(target.x, target.y, '#a8b28a', 0.6));
-                
-                if (nextTargetIndex >= currentTargets.length) {
-                    completeHechizo();
-                }
-            } else if (!enforceSequence) {
-                currentTargets.forEach(t => {
-                    if (!t.hit && Math.hypot(x - t.x, y - t.y) < detectionThreshold) t.hit = true;
-                });
-                if (currentTargets.every(t => t.hit)) completeHechizo();
+                for(let i=0; i<15; i++) particles.push(new Particle(target.x, target.y, '#a8b28a', 0.8));
+                if (nextTargetIndex >= currentTargets.length) completeHechizo();
             }
         }
 
         function completeHechizo() {
             if (status.innerText.includes("✨")) return;
             const letter = alphabet[currentLetterIndex];
-            status.innerText = `✨ LOGRADO: ${letter} ✨`;
+            status.innerText = `✨ EXCELENTE: ${letter} ✨`;
             speak(letter);
-            for(let i=0; i<120; i++) particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*500, canvas.height/2 + (Math.random()-0.5)*500, '#a8b28a', 2.8));
+            for(let i=0; i<150; i++) particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*600, canvas.height/2 + (Math.random()-0.5)*600, '#a8b28a', 3));
             setTimeout(() => {
                 currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
                 resetState();
@@ -235,58 +212,56 @@
         function resetState() {
             allStrokes = []; currentStroke = []; particles = [];
             guide.innerText = alphabet[currentLetterIndex];
-            status.innerText = "SIGUE LA LUZ";
+            status.innerText = "TEJE LA LUZ";
             initLetterTargets();
         }
 
         function handleInput(e) {
             e.preventDefault();
-            if (!drawing) return;
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-            const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-            currentStroke.push({x, y});
-            checkCompletion(x, y);
-            if (Math.random() > 0.25) particles.push(new Particle(x, y, '#896ab0'));
-            if (Math.random() > 0.85) particles.push(new Particle(x, y, '#f2efd9', 1.3));
+            currentX = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            currentY = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            
+            if (drawing) {
+                currentStroke.push({x: currentX, y: currentY});
+                checkCompletion(currentX, currentY);
+
+                // --- MAGIC TRACER (V9) ---
+                // Partículas que siguen el dedo en tiempo real para dar confianza
+                for(let i=0; i<2; i++) {
+                    particles.push(new Particle(currentX, currentY, '#ivory', 0.8, true));
+                }
+                if (Math.random() > 0.7) particles.push(new Particle(currentX, currentY, '#896ab0', 1.2, true));
+            }
         }
 
         function drawEverything() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 1. DIBUJAR GUÍA VISUAL (Wisp V8)
-            if (showGuideWisp && currentTargets[nextTargetIndex]) {
+            // 1. GUÍA WISP (Destello Guía)
+            if (currentTargets[nextTargetIndex]) {
                 const target = currentTargets[nextTargetIndex];
-                guidePulse += 0.05;
-                const size = 15 + Math.sin(guidePulse) * 5;
-                
+                guidePulse += 0.06;
+                const size = 20 + Math.sin(guidePulse) * 8;
                 ctx.save();
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#a8b28a';
-                ctx.fillStyle = 'rgba(168, 178, 138, 0.4)'; // Verde Salvia suave
-                ctx.beginPath();
-                ctx.arc(target.x, target.y, size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.shadowBlur = 30; ctx.shadowColor = '#a8b28a';
+                ctx.fillStyle = 'rgba(168, 178, 138, 0.5)';
+                ctx.beginPath(); ctx.arc(target.x, target.y, size, 0, Math.PI * 2); ctx.fill();
                 
-                // Flecha indicadora de dirección si hay un siguiente punto
                 if (currentTargets[nextTargetIndex + 1]) {
                     const next = currentTargets[nextTargetIndex + 1];
                     const angle = Math.atan2(next.y - target.y, next.x - target.x);
-                    ctx.strokeStyle = 'rgba(168, 178, 138, 0.3)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(target.x, target.y);
-                    ctx.lineTo(target.x + Math.cos(angle) * 40, target.y + Math.sin(angle) * 40);
-                    ctx.stroke();
+                    ctx.strokeStyle = 'rgba(168, 178, 138, 0.4)'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(target.x, target.y);
+                    ctx.lineTo(target.x + Math.cos(angle) * 50, target.y + Math.sin(angle) * 50); ctx.stroke();
                 }
                 ctx.restore();
             }
 
             // 2. DIBUJAR TRAZOS
             ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-            ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(137, 106, 176, 0.4)';
-            ctx.strokeStyle = '#896ab0';
-            ctx.lineWidth = 7;
+            ctx.shadowBlur = 20; ctx.shadowColor = 'rgba(137, 106, 176, 0.5)';
+            ctx.strokeStyle = '#896ab0'; ctx.lineWidth = 8;
             [...allStrokes, currentStroke].forEach(stroke => {
                 if (stroke.length < 2) return;
                 ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
@@ -294,7 +269,7 @@
                 ctx.stroke();
             });
 
-            // 3. PARTÍCULAS
+            // 3. PARTÍCULAS (Incluye el Tracer de confianza)
             ctx.shadowBlur = 0;
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update(); particles[i].draw();
@@ -321,15 +296,14 @@
         window.addEventListener('touchend', endDrawing);
 
         resetBtn.addEventListener('click', () => {
-            window.speechSynthesis.cancel();
-            resetState();
+            window.speechSynthesis.cancel(); resetState();
             status.innerText = "MAGIA REINICIADA";
-            for(let i=0; i<40; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#f2efd9', 2.5));
+            for(let i=0; i<50; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#f2efd9', 2.5));
         });
 
         window.addEventListener('resize', resize);
         resize(); drawEverything();
-        window.addEventListener('click', () => { if (status.innerText === "INICIAR SECUENCIA") status.innerText = "SIGUE LA LUZ"; }, {once: true});
+        window.addEventListener('click', () => { if (status.innerText === "TOCA PARA EMPEZAR") status.innerText = "TEJE LA LUZ"; }, {once: true});
     </script>
 </body>
 </html>
