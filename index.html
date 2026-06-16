@@ -165,37 +165,23 @@
             }
         }
 
-        // --- LÓGICA DE VOZ "NURTURING" (V10) ---
-        function speakNurturing(text, isEncouragement = false) {
+        // --- LÓGICA DE VOZ "NURTURING" (V10.1) ---
+        function speakNurturing(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             const voices = window.speechSynthesis.getVoices();
             
-            // Buscar una voz dulce/natural disponible en el sistema
-            // Preferencias: Monica (Mac), Paulina (MX), Google (Chrome)
-            const preferredVoices = ["Monica", "Paulina", "Google Español", "Microsoft Sabina"];
-            const voice = voices.find(v => preferredVoices.some(p => v.name.includes(p)) && v.lang.includes(langSelect.value.split('-')[0]));
+            // Prioridad absoluta a voces dulces y humanas
+            const preferredVoices = ["Monica", "Paulina", "Google Español", "Luciana", "Microsoft Sabina"];
+            const voice = voices.find(v => preferredVoices.some(p => v.name.includes(p)) && v.lang.includes("es"));
             
             if (voice) utterance.voice = voice;
             
-            // Calibración "Nurturing": Tono ligeramente alto, velocidad pausada
-            utterance.pitch = 1.2; 
-            utterance.rate = 0.85; 
-            utterance.volume = 0.9;
-            utterance.lang = langSelect.value;
+            utterance.pitch = 1.3; // Un poco más agudo para dulzura
+            utterance.rate = 0.8;  // Más pausado para claridad
+            utterance.lang = "es-MX";
             
             window.speechSynthesis.speak(utterance);
-        }
-
-        function checkCompletion(x, y) {
-            const target = currentTargets[nextTargetIndex];
-            if (!target) return;
-            if (Math.hypot(x - target.x, y - target.y) < detectionThreshold) {
-                target.hit = true;
-                nextTargetIndex++;
-                for(let i=0; i<15; i++) particles.push(new Particle(target.x, target.y, '#a8b28a', 0.8));
-                if (nextTargetIndex >= currentTargets.length) completeHechizo();
-            }
         }
 
         function completeHechizo() {
@@ -203,11 +189,13 @@
             const letter = alphabet[currentLetterIndex];
             status.innerText = `✨ ¡QUÉ BONITO! LETRA ${letter} ✨`;
             
-            // Frases nurturing aleatorias
-            const rewards = ["¡Qué bonito!", "¡Muy bien!", "¡Lo lograste!", "¡Excelente!", "¡Precioso!"];
-            const reward = rewards[Math.floor(Math.random() * rewards.length)];
+            // Lógica de cumplidos: Siempre primero el refuerzo emocional
+            const compliments = ["¡Qué bonito!", "¡Muy bien!", "¡Lo hiciste genial!", "¡Precioso!", "¡Qué maravilla!"];
+            const chosenCompliment = compliments[Math.floor(Math.random() * compliments.length)];
             
-            speakNurturing(`${reward}... Letra ${letter}`);
+            // DECIR: [Cumplido] + [Solo el nombre de la letra]
+            // NO se menciona "Mayúscula" ni nada técnico.
+            speakNurturing(`${chosenCompliment}... Letra ${letter}`);
             
             for(let i=0; i<150; i++) particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*600, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 3));
             setTimeout(() => {
