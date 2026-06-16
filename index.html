@@ -14,13 +14,9 @@
             --ivory: #f2efd9;
         }
         body { 
-            margin: 0; 
-            background-color: var(--bg); 
-            color: var(--text); 
-            font-family: 'Inter', sans-serif, Arial; 
-            overflow: hidden; 
-            touch-action: none;
-            cursor: crosshair;
+            margin: 0; background-color: var(--bg); color: var(--text); 
+            font-family: 'Inter', sans-serif, Arial; overflow: hidden; 
+            touch-action: none; cursor: crosshair;
         }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
@@ -29,7 +25,7 @@
             position: absolute; top: 20px; right: 20px; z-index: 101;
             background: rgba(35, 31, 36, 0.85); padding: 15px; border-radius: 12px;
             border: 1px solid var(--gold); display: flex; flex-direction: column; gap: 12px;
-            backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
         }
 
         #letterContainer {
@@ -41,7 +37,7 @@
             font-size: min(75vh, 75vw);
             color: rgba(155, 142, 108, 0.04); 
             user-select: none; font-weight: 100;
-            letter-spacing: -10px; font-variant-ligatures: none;
+            letter-spacing: -10px;
         }
         
         #status { color: var(--accent); font-size: 14px; font-family: 'Courier New', monospace; text-transform: uppercase; }
@@ -67,7 +63,7 @@
 </head>
 <body>
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">TRACER_MAGIC_V9</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">NURTURING_MAGIC_V10</h1>
         <div id="status">TOCA PARA EMPEZAR</div>
     </div>
     
@@ -105,14 +101,12 @@
         
         let allStrokes = [];
         let currentStroke = [];
-        
         let currentTargets = [];
         let nextTargetIndex = 0;
         let detectionThreshold = 100; 
         let enforceSequence = true;
-
         let guidePulse = 0;
-        let currentX = 0, currentY = 0; // Para el Tracer real-time
+        let currentX = 0, currentY = 0;
 
         const LetterSkeletons = {
             'A': [{x:0, y:-0.7}, {x:-0.4, y:0.7}, {x:0, y:-0.7}, {x:0.4, y:0.7}, {x:-0.2, y:0.1}, {x:0.2, y:0.1}],
@@ -133,13 +127,13 @@
             'P': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:-0.4, y:0}],
             'Q': [{x:0, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:0}, {x:-0.5, y:0}, {x:0.2, y:0.2}, {x:0.5, y:0.6}],
             'R': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.3, y:-0.3}, {x:0.4, y:0.7}],
-            'S': [{x:0.4, y:-0.5}, {x:0, y:-0.7}, {x:-0.4, y:-0.3}, {x:0, y:0}, {x:0.4, y:0.3}, {x:0, y:0.7}, {x:-0.4, y:0.5}],
+            'S': [{x:0.4, y:-0.5}, {x:0, y:-0.7}, {x:-0.4, y:0.3}, {x:0, y:0}, {x:0.4, y:0.3}, {x:0, y:0.7}, {x:-0.4, y:0.5}],
             'T': [{x:-0.5, y:-0.7}, {x:0.5, y:-0.7}, {x:0, y:-0.7}, {x:0, y:0.7}],
             'U': [{x:-0.4, y:-0.7}, {x:-0.4, y:0.4}, {x:0, y:0.7}, {x:0.4, y:0.4}, {x:0.4, y:-0.7}],
             'V': [{x:-0.5, y:-0.7}, {x:0, y:0.7}, {x:0.5, y:-0.7}],
             'W': [{x:-0.5, y:-0.7}, {x:-0.3, y:0.7}, {x:0, y:0.1}, {x:0.3, y:0.7}, {x:0.5, y:-0.7}],
             'X': [{x:-0.4, y:-0.7}, {x:0.4, y:0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0.7}],
-            'Y': [{x:-0.4, y:-0.7}, {x:0, y:0}, {x:0.4, y:-0.7}, {x:0, y:0.7}],
+            'Y': [{x:-0.4, y:-0.7}, {x:0, y:0}, {x:0.4, y:-0.7}, {x:0, y:0}, {x:0, y:0.7}],
             'Z': [{x:-0.4, y:-0.7}, {x:0.4, y:-0.7}, {x:-0.4, y:0.7}, {x:0.4, y:0.7}]
         };
 
@@ -151,12 +145,7 @@
             const scale = Math.min(canvas.height, canvas.width) * 0.45;
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
-
-            currentTargets = skeleton.map((p, index) => ({
-                x: cx + p.x * scale,
-                y: cy + p.y * scale,
-                hit: false
-            }));
+            currentTargets = skeleton.map(p => ({ x: cx + p.x * scale, y: cy + p.y * scale, hit: false }));
             nextTargetIndex = 0;
         }
 
@@ -166,8 +155,7 @@
                 this.size = (Math.random() * 4 + 2) * sizeMult;
                 this.speedX = isTracer ? (Math.random()-0.5)*2 : (Math.random()*3 - 1.5);
                 this.speedY = isTracer ? (Math.random()-0.5)*2 : (Math.random()*3 - 1.5);
-                this.color = color;
-                this.life = 1.0;
+                this.color = color; this.life = 1.0;
                 this.decay = isTracer ? 0.03 : (Math.random() * 0.01 + 0.01);
             }
             update() { this.x += this.speedX; this.y += this.speedY; this.life -= this.decay; }
@@ -177,18 +165,31 @@
             }
         }
 
-        function speak(text) {
+        // --- LÓGICA DE VOZ "NURTURING" (V10) ---
+        function speakNurturing(text, isEncouragement = false) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Buscar una voz dulce/natural disponible en el sistema
+            // Preferencias: Monica (Mac), Paulina (MX), Google (Chrome)
+            const preferredVoices = ["Monica", "Paulina", "Google Español", "Microsoft Sabina"];
+            const voice = voices.find(v => preferredVoices.some(p => v.name.includes(p)) && v.lang.includes(langSelect.value.split('-')[0]));
+            
+            if (voice) utterance.voice = voice;
+            
+            // Calibración "Nurturing": Tono ligeramente alto, velocidad pausada
+            utterance.pitch = 1.2; 
+            utterance.rate = 0.85; 
+            utterance.volume = 0.9;
             utterance.lang = langSelect.value;
-            utterance.rate = 0.85;
+            
             window.speechSynthesis.speak(utterance);
         }
 
         function checkCompletion(x, y) {
             const target = currentTargets[nextTargetIndex];
             if (!target) return;
-
             if (Math.hypot(x - target.x, y - target.y) < detectionThreshold) {
                 target.hit = true;
                 nextTargetIndex++;
@@ -200,13 +201,19 @@
         function completeHechizo() {
             if (status.innerText.includes("✨")) return;
             const letter = alphabet[currentLetterIndex];
-            status.innerText = `✨ EXCELENTE: ${letter} ✨`;
-            speak(letter);
-            for(let i=0; i<150; i++) particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*600, canvas.height/2 + (Math.random()-0.5)*600, '#a8b28a', 3));
+            status.innerText = `✨ ¡QUÉ BONITO! LETRA ${letter} ✨`;
+            
+            // Frases nurturing aleatorias
+            const rewards = ["¡Qué bonito!", "¡Muy bien!", "¡Lo lograste!", "¡Excelente!", "¡Precioso!"];
+            const reward = rewards[Math.floor(Math.random() * rewards.length)];
+            
+            speakNurturing(`${reward}... Letra ${letter}`);
+            
+            for(let i=0; i<150; i++) particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*600, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 3));
             setTimeout(() => {
                 currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
                 resetState();
-            }, 2500);
+            }, 3000);
         }
 
         function resetState() {
@@ -221,33 +228,22 @@
             const rect = canvas.getBoundingClientRect();
             currentX = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
             currentY = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-            
             if (drawing) {
                 currentStroke.push({x: currentX, y: currentY});
                 checkCompletion(currentX, currentY);
-
-                // --- MAGIC TRACER (V9) ---
-                // Partículas que siguen el dedo en tiempo real para dar confianza
-                for(let i=0; i<2; i++) {
-                    particles.push(new Particle(currentX, currentY, '#ivory', 0.8, true));
-                }
-                if (Math.random() > 0.7) particles.push(new Particle(currentX, currentY, '#896ab0', 1.2, true));
+                for(let i=0; i<2; i++) particles.push(new Particle(currentX, currentY, '#f2efd9', 0.8, true));
             }
         }
 
         function drawEverything() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // 1. GUÍA WISP (Destello Guía)
             if (currentTargets[nextTargetIndex]) {
                 const target = currentTargets[nextTargetIndex];
                 guidePulse += 0.06;
                 const size = 20 + Math.sin(guidePulse) * 8;
-                ctx.save();
-                ctx.shadowBlur = 30; ctx.shadowColor = '#a8b28a';
+                ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = '#a8b28a';
                 ctx.fillStyle = 'rgba(168, 178, 138, 0.5)';
                 ctx.beginPath(); ctx.arc(target.x, target.y, size, 0, Math.PI * 2); ctx.fill();
-                
                 if (currentTargets[nextTargetIndex + 1]) {
                     const next = currentTargets[nextTargetIndex + 1];
                     const angle = Math.atan2(next.y - target.y, next.x - target.x);
@@ -257,10 +253,7 @@
                 }
                 ctx.restore();
             }
-
-            // 2. DIBUJAR TRAZOS
-            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-            ctx.shadowBlur = 20; ctx.shadowColor = 'rgba(137, 106, 176, 0.5)';
+            ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.shadowBlur = 20; ctx.shadowColor = 'rgba(137, 106, 176, 0.5)';
             ctx.strokeStyle = '#896ab0'; ctx.lineWidth = 8;
             [...allStrokes, currentStroke].forEach(stroke => {
                 if (stroke.length < 2) return;
@@ -268,8 +261,6 @@
                 for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
                 ctx.stroke();
             });
-
-            // 3. PARTÍCULAS (Incluye el Tracer de confianza)
             ctx.shadowBlur = 0;
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update(); particles[i].draw();
@@ -302,8 +293,9 @@
         });
 
         window.addEventListener('resize', resize);
+        window.onvoiceschanged = () => speakNurturing("¡Hola! Vamos a tejer magia.", true);
         resize(); drawEverything();
-        window.addEventListener('click', () => { if (status.innerText === "TOCA PARA EMPEZAR") status.innerText = "TEJE LA LUZ"; }, {once: true});
+        window.addEventListener('click', () => { if (status.innerText === "TOCA PARA EMPEZAR") { status.innerText = "TEJE LA LUZ"; speakNurturing("¡Hola! Vamos a tejer magia.", true); } }, {once: true});
     </script>
 </body>
 </html>
