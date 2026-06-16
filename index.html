@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WHA: Alfabeto Mágico</title>
+    <style>
+        :root {
+            --bg: #231f24;
+            --accent: #896ab0;
+            --gold: #9b8e6c;
+            --text: #e3e0a4;
+            --success: #a8b28a;
+        }
+        body { 
+            margin: 0; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            font-family: 'Inter', sans-serif, Arial; 
+            overflow: hidden; 
+            touch-action: none;
+            cursor: crosshair;
+        }
+        canvas { display: block; }
+        #ui { 
+            position: absolute; 
+            top: env(safe-area-inset-top, 20px); 
+            left: 20px; 
+            pointer-events: none; 
+            z-index: 100; 
+        }
+        .letter-guide { 
+            position: absolute; 
+            top: 55%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 70vh; 
+            color: rgba(155, 142, 108, 0.08); 
+            user-select: none; 
+            pointer-events: none;
+            font-weight: 100;
+            letter-spacing: -20px;
+            font-variant-ligatures: none;
+        }
+        #status { color: var(--accent); font-size: 14px; margin-top: 10px; font-family: 'Courier New', monospace; text-transform: uppercase; }
+        #instructions { 
+            position: absolute; 
+            bottom: env(safe-area-inset-bottom, 20px); 
+            left: 20px; 
+            color: var(--gold); 
+            font-size: 10px; 
+            font-family: 'Courier New', monospace; 
+        }
+        #settings {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+        }
+        select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            font-size: 12px;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_FONÉTICA_V3</h1>
+        <div id="status">INICIALIZANDO PINCEL...</div>
+    </div>
+    
+    <div id="settings">
+        <select id="langSelect">
+            <option value="es-MX">Español (MX)</option>
+            <option value="en-US">English (US)</option>
+            <option value="ja-JP">日本語</option>
+        </select>
+    </div>
+
+    <div id="instructions">DIBUJA PARA ACTIVAR LA MAGIA | ESPACIO PARA LIMPIAR</div>
+    <div class="letter-guide" id="guide">A</div>
+    <canvas id="magicCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('magicCanvas');
+        const ctx = canvas.getContext('2d');
+        const guide = document.getElementById('guide');
+        const status = document.getElementById('status');
+        const langSelect = document.getElementById('langSelect');
+
+        let drawing = false;
+        let points = [];
+        let particles = [];
+        let currentLetterIndex = 0;
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+        
+        // Lógica de "Bounding Boxes" para detección de completitud simple
+        let touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        class Particle {
+            constructor(x, y, color, sizeMult = 1) {
+                this.x = x; this.y = y;
+                this.size = (Math.random() * 4 + 1) * sizeMult;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.color = color;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.015 + 0.01;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function speakLetter(letter) {
+            const utterance = new SpeechSynthesisUtterance(letter);
+            utterance.lang = langSelect.value;
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function checkCompletion(x, y) {
+            const w = canvas.width;
+            const h = canvas.height;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const threshold = 150; // Margen de detección
+
+            if (x < centerX - threshold && y < centerY - threshold) touchedCorners.tl = true;
+            if (x > centerX + threshold && y < centerY - threshold) touchedCorners.tr = true;
+            if (x < centerX - threshold && y > centerY + threshold) touchedCorners.bl = true;
+            if (x > centerX + threshold && y > centerY + threshold) touchedCorners.br = true;
+            if (Math.abs(x - centerX) < 50 && Math.abs(y - centerY) < 50) touchedCorners.mid = true;
+
+            // Si se han tocado suficientes puntos de la "caja" de la letra
+            const score = Object.values(touchedCorners).filter(v => v).length;
+            if (score >= 3) {
+                completeHechizo();
+            }
+        }
+
+        function completeHechizo() {
+            if (!drawing) return;
+            drawing = false;
+            
+            const letter = alphabet[currentLetterIndex];
+            status.innerText = `ÉXITO: ${letter}`;
+            speakLetter(letter);
+
+            // Gran estallido de éxito
+            for(let i=0; i<50; i++) {
+                particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*200, canvas.height/2 + (Math.random()-0.5)*200, '#a8b28a', 3));
+            }
+
+            // Reset boxes y pasar a la siguiente letra tras un breve delay
+            touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
+            setTimeout(() => {
+                currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
+                guide.innerText = alphabet[currentLetterIndex];
+                status.innerText = "ESPERANDO NUEVO TRAZO...";
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+            }, 1500);
+        }
+
+        function handleInput(e) {
+            if (!drawing) return;
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            
+            points.push({x, y});
+            checkCompletion(x, y);
+
+            if (Math.random() > 0.3) particles.push(new Particle(x, y, '#896ab0'));
+            if (Math.random() > 0.9) particles.push(new Particle(x, y, '#e3e0a4', 1.5));
+            
+            drawStrokes();
+        }
+
+        function drawStrokes() {
+            ctx.strokeStyle = '#896ab0';
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            ctx.shadowBlur = 10; ctx.shadowColor = '#896ab0';
+            if (points.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+            ctx.stroke();
+        }
+
+        canvas.addEventListener('mousedown', () => { drawing = true; points = []; });
+        canvas.addEventListener('touchstart', (e) => { drawing = true; points = []; handleInput(e); });
+        window.addEventListener('mousemove', handleInput);
+        window.addEventListener('touchmove', handleInput);
+        window.addEventListener('mouseup', () => { drawing = false; points = []; });
+        window.addEventListener('touchend', () => { drawing = false; points = []; });
+
+        function animate() {
+            ctx.fillStyle = 'rgba(35, 31, 36, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) { particles.splice(i, 1); i--; }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+                particles = [];
+                touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
+            }
+        });
+
+        // Initialize TTS
+        window.addEventListener('click', () => {
+            if (status.innerText === "INICIALIZANDO PINCEL...") {
+                status.innerText = "SISTEMA LISTO: DIBUJA LA LETRA";
+                // Chrome requires user interaction to enable speech
+            }
+        }, {once: true});
+
+    </script>
+</body>
+</html>
