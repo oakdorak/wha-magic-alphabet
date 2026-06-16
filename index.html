@@ -11,6 +11,7 @@
             --gold: #9b8e6c;
             --text: #e3e0a4;
             --success: #a8b28a;
+            --ivory: #f2efd9;
         }
         body { 
             margin: 0; 
@@ -21,7 +22,7 @@
             touch-action: none;
             cursor: crosshair;
         }
-        canvas { display: block; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         #ui { 
             position: absolute; 
             top: env(safe-area-inset-top, 20px); 
@@ -31,7 +32,7 @@
         }
         .letter-guide { 
             position: absolute; 
-            top: 55%; 
+            top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
             font-size: 70vh; 
@@ -43,14 +44,38 @@
             font-variant-ligatures: none;
         }
         #status { color: var(--accent); font-size: 14px; margin-top: 10px; font-family: 'Courier New', monospace; text-transform: uppercase; }
-        #instructions { 
-            position: absolute; 
-            bottom: env(safe-area-inset-bottom, 20px); 
-            left: 20px; 
-            color: var(--gold); 
-            font-size: 10px; 
-            font-family: 'Courier New', monospace; 
+        
+        /* Botón Mágico Marfil */
+        #resetBtn {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background-color: var(--ivory);
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 0 20px rgba(242, 239, 217, 0.3);
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
+        #resetBtn:active {
+            transform: translateX(-50%) scale(0.9);
+            box-shadow: 0 0 40px rgba(242, 239, 217, 0.6);
+        }
+        #resetBtn::after {
+            content: '✨';
+            font-size: 24px;
+            opacity: 0.6;
+        }
+
         #settings {
             position: absolute;
             top: 20px;
@@ -73,8 +98,8 @@
 </head>
 <body>
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_FONÉTICA_V3</h1>
-        <div id="status">INICIALIZANDO PINCEL...</div>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">MAGIA_FONÉTICA_V4</h1>
+        <div id="status">TOCA PARA EMPEZAR</div>
     </div>
     
     <div id="settings">
@@ -85,7 +110,8 @@
         </select>
     </div>
 
-    <div id="instructions">DIBUJA PARA ACTIVAR LA MAGIA | ESPACIO PARA LIMPIAR</div>
+    <button id="resetBtn" title="Volver a empezar"></button>
+
     <div class="letter-guide" id="guide">A</div>
     <canvas id="magicCanvas"></canvas>
 
@@ -95,15 +121,20 @@
         const guide = document.getElementById('guide');
         const status = document.getElementById('status');
         const langSelect = document.getElementById('langSelect');
+        const resetBtn = document.getElementById('resetBtn');
 
         let drawing = false;
-        let points = [];
         let particles = [];
         let currentLetterIndex = 0;
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         
-        // Lógica de "Bounding Boxes" para detección de completitud simple
-        let touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
+        // Memoria de trazos para persistencia
+        let allStrokes = [];
+        let currentStroke = [];
+
+        // Lógica de colisión mejorada
+        let touchedPoints = new Set();
+        const detectionThreshold = 80; // Sensibilidad de detección
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -111,135 +142,180 @@
         class Particle {
             constructor(x, y, color, sizeMult = 1) {
                 this.x = x; this.y = y;
-                this.size = (Math.random() * 4 + 1) * sizeMult;
-                this.speedX = Math.random() * 2 - 1;
-                this.speedY = Math.random() * 2 - 1;
+                this.size = (Math.random() * 5 + 2) * sizeMult;
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 - 1.5;
                 this.color = color;
                 this.life = 1.0;
-                this.decay = Math.random() * 0.015 + 0.01;
+                this.decay = Math.random() * 0.01 + 0.005;
             }
             update() {
-                this.x += this.speedX; this.y += this.speedY;
+                this.x += this.speedX;
+                this.y += this.speedY;
                 this.life -= this.decay;
             }
             draw() {
+                ctx.save();
                 ctx.fillStyle = this.color;
                 ctx.globalAlpha = this.life;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.restore();
             }
         }
 
         function speakLetter(letter) {
             const utterance = new SpeechSynthesisUtterance(letter);
             utterance.lang = langSelect.value;
-            utterance.rate = 0.9;
+            utterance.rate = 0.85;
             window.speechSynthesis.speak(utterance);
         }
 
-        function checkCompletion(x, y) {
+        function getTargetZones() {
             const w = canvas.width;
             const h = canvas.height;
-            const centerX = w / 2;
-            const centerY = h / 2;
-            const threshold = 150; // Margen de detección
+            const cx = w / 2;
+            const cy = h / 2;
+            const r = h * 0.25; // Radio aproximado de la letra
+            
+            return [
+                { id: 1, x: cx - r, y: cy - r }, // Top Left
+                { id: 2, x: cx + r, y: cy - r }, // Top Right
+                { id: 3, x: cx - r, y: cy + r }, // Bottom Left
+                { id: 4, x: cx + r, y: cy + r }, // Bottom Right
+                { id: 5, x: cx,     y: cy     }  // Center
+            ];
+        }
 
-            if (x < centerX - threshold && y < centerY - threshold) touchedCorners.tl = true;
-            if (x > centerX + threshold && y < centerY - threshold) touchedCorners.tr = true;
-            if (x < centerX - threshold && y > centerY + threshold) touchedCorners.bl = true;
-            if (x > centerX + threshold && y > centerY + threshold) touchedCorners.br = true;
-            if (Math.abs(x - centerX) < 50 && Math.abs(y - centerY) < 50) touchedCorners.mid = true;
+        function checkCompletion(x, y) {
+            const zones = getTargetZones();
+            zones.forEach(z => {
+                const dist = Math.hypot(x - z.x, y - z.y);
+                if (dist < detectionThreshold) {
+                    touchedPoints.add(z.id);
+                }
+            });
 
-            // Si se han tocado suficientes puntos de la "caja" de la letra
-            const score = Object.values(touchedCorners).filter(v => v).length;
-            if (score >= 3) {
+            // Si se tocan 3 de las 5 zonas críticas, avanzamos
+            if (touchedPoints.size >= 3) {
                 completeHechizo();
             }
         }
 
         function completeHechizo() {
-            if (!drawing) return;
-            drawing = false;
+            if (status.innerText.includes("ÉXITO")) return;
             
             const letter = alphabet[currentLetterIndex];
-            status.innerText = `ÉXITO: ${letter}`;
+            status.innerText = `✨ ¡MAGIA! LETRA ${letter} ✨`;
             speakLetter(letter);
 
-            // Gran estallido de éxito
-            for(let i=0; i<50; i++) {
-                particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*200, canvas.height/2 + (Math.random()-0.5)*200, '#a8b28a', 3));
+            // Explosión mágica masiva
+            for(let i=0; i<100; i++) {
+                particles.push(new Particle(canvas.width/2 + (Math.random()-0.5)*400, canvas.height/2 + (Math.random()-0.5)*400, '#a8b28a', 2));
             }
 
-            // Reset boxes y pasar a la siguiente letra tras un breve delay
-            touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
             setTimeout(() => {
-                currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
-                guide.innerText = alphabet[currentLetterIndex];
-                status.innerText = "ESPERANDO NUEVO TRAZO...";
-                ctx.clearRect(0,0, canvas.width, canvas.height);
-            }, 1500);
+                nextLetter();
+            }, 2000);
+        }
+
+        function nextLetter() {
+            currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
+            resetCanvas();
+            guide.innerText = alphabet[currentLetterIndex];
+            status.innerText = "SIGUIENTE HECHIZO...";
+        }
+
+        function resetCanvas() {
+            allStrokes = [];
+            currentStroke = [];
+            particles = [];
+            touchedPoints.clear();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         function handleInput(e) {
+            e.preventDefault();
             if (!drawing) return;
-            const x = e.clientX || e.touches[0].clientX;
-            const y = e.clientY || e.touches[0].clientY;
+            const x = e.clientX || (e.touches && e.touches[0].clientX);
+            const y = e.clientY || (e.touches && e.touches[0].clientY);
             
-            points.push({x, y});
+            if (x === undefined || y === undefined) return;
+
+            currentStroke.push({x, y});
             checkCompletion(x, y);
 
-            if (Math.random() > 0.3) particles.push(new Particle(x, y, '#896ab0'));
-            if (Math.random() > 0.9) particles.push(new Particle(x, y, '#e3e0a4', 1.5));
+            // Partículas mágicas al trazar
+            if (Math.random() > 0.2) particles.push(new Particle(x, y, '#896ab0'));
+            if (Math.random() > 0.8) particles.push(new Particle(x, y, '#f2efd9', 1.2));
+        }
+
+        function drawEverything() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            drawStrokes();
-        }
-
-        function drawStrokes() {
+            // 1. Dibujar trazos persistentes
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#896ab0';
             ctx.strokeStyle = '#896ab0';
-            ctx.lineWidth = 3;
-            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-            ctx.shadowBlur = 10; ctx.shadowColor = '#896ab0';
-            if (points.length < 2) return;
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-            ctx.stroke();
-        }
+            ctx.lineWidth = 5;
 
-        canvas.addEventListener('mousedown', () => { drawing = true; points = []; });
-        canvas.addEventListener('touchstart', (e) => { drawing = true; points = []; handleInput(e); });
-        window.addEventListener('mousemove', handleInput);
-        window.addEventListener('touchmove', handleInput);
-        window.addEventListener('mouseup', () => { drawing = false; points = []; });
-        window.addEventListener('touchend', () => { drawing = false; points = []; });
+            [...allStrokes, currentStroke].forEach(stroke => {
+                if (stroke.length < 2) return;
+                ctx.beginPath();
+                ctx.moveTo(stroke[0].x, stroke[0].y);
+                for (let i = 1; i < stroke.length; i++) {
+                    ctx.lineTo(stroke[i].x, stroke[i].y);
+                }
+                ctx.stroke();
+            });
 
-        function animate() {
-            ctx.fillStyle = 'rgba(35, 31, 36, 0.15)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 2. Dibujar partículas mágicas
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update();
                 particles[i].draw();
                 if (particles[i].life <= 0) { particles.splice(i, 1); i--; }
             }
-            requestAnimationFrame(animate);
+
+            requestAnimationFrame(drawEverything);
         }
 
-        animate();
-
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                ctx.clearRect(0,0, canvas.width, canvas.height);
-                particles = [];
-                touchedCorners = { tl: false, tr: false, bl: false, br: false, mid: false };
-            }
+        canvas.addEventListener('mousedown', (e) => { drawing = true; currentStroke = []; handleInput(e); });
+        canvas.addEventListener('touchstart', (e) => { drawing = true; currentStroke = []; handleInput(e); });
+        
+        window.addEventListener('mousemove', handleInput);
+        window.addEventListener('touchmove', handleInput, { passive: false });
+        
+        window.addEventListener('mouseup', () => { 
+            if (currentStroke.length > 0) allStrokes.push(currentStroke);
+            drawing = false; 
+            currentStroke = []; 
+        });
+        window.addEventListener('touchend', () => { 
+            if (currentStroke.length > 0) allStrokes.push(currentStroke);
+            drawing = false; 
+            currentStroke = []; 
         });
 
-        // Initialize TTS
+        resetBtn.addEventListener('click', () => {
+            // Animación de reset
+            for(let i=0; i<30; i++) particles.push(new Particle(canvas.width/2, canvas.height-80, '#f2efd9', 2));
+            resetCanvas();
+            status.innerText = "VOLVIENDO A EMPEZAR...";
+        });
+
+        drawEverything();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') resetCanvas();
+        });
+
+        // Habilitar audio
         window.addEventListener('click', () => {
-            if (status.innerText === "INICIALIZANDO PINCEL...") {
-                status.innerText = "SISTEMA LISTO: DIBUJA LA LETRA";
-                // Chrome requires user interaction to enable speech
+            if (status.innerText === "TOCA PARA EMPEZAR") {
+                status.innerText = "DIBUJA LA LETRA";
             }
         }, {once: true});
 
