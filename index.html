@@ -115,7 +115,7 @@
     </div>
 
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">DOPAMINE_MAGIC_V15</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">BLOOM_MAGIC_V16</h1>
         <div id="status">INICIANDO...</div>
     </div>
     
@@ -154,7 +154,7 @@
 
         let drawing = false;
         let particles = [];
-        let flowers = []; // Nueva lógica de dopamina
+        let flowers = []; 
         let currentLetterIndex = 0;
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         let allStrokes = [];
@@ -216,7 +216,7 @@
                 this.x = x; this.y = y; this.size = (Math.random() * 4 + 2) * sizeMult;
                 this.speedX = isTracer ? (Math.random()-0.5)*3 : (Math.random()*4 - 2);
                 this.speedY = isTracer ? (Math.random()-0.5)*3 : (Math.random()*4 - 2);
-                this.color = color; this.life = 1.0; this.decay = isTracer ? 0.05 : (Math.random() * 0.01 + 0.01);
+                this.color = color; this.life = 1.0; this.decay = isTracer ? 0.04 : (Math.random() * 0.01 + 0.01);
             }
             update() { this.x += this.speedX; this.y += this.speedY; this.life -= this.decay; }
             draw() { ctx.save(); ctx.fillStyle = this.color; ctx.globalAlpha = this.life; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
@@ -225,20 +225,22 @@
         class Flower {
             constructor(x, y, color) {
                 this.x = x; this.y = y; this.color = color;
-                this.angle = 0; this.scale = 0; this.maxScale = Math.random() * 0.5 + 0.5;
-                this.rotationSpeed = Math.random() * 0.05 + 0.02;
+                this.angle = 0; this.scale = 0; this.maxScale = Math.random() * 0.4 + 0.3;
+                this.rotationSpeed = (Math.random()-0.5) * 0.05;
             }
             update() { 
-                if (this.scale < this.maxScale) this.scale += 0.05;
+                if (this.scale < this.maxScale) this.scale += 0.03;
                 this.angle += this.rotationSpeed;
             }
             draw() {
                 ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.scale(this.scale, this.scale);
-                ctx.fillStyle = this.color; ctx.globalAlpha = 0.6;
+                ctx.fillStyle = this.color; ctx.globalAlpha = 0.5;
                 for (let i = 0; i < 6; i++) {
                     ctx.rotate(Math.PI / 3);
-                    ctx.beginPath(); ctx.ellipse(0, 30, 15, 30, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(0, 40, 20, 40, 0, 0, Math.PI * 2); ctx.fill();
                 }
+                // Centro de la flor
+                ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
                 ctx.restore();
             }
         }
@@ -289,11 +291,17 @@
             const compliments = ["¡Qué maravilla!", "¡Muy bien!", "¡Lo hiciste genial!", "¡Precioso!", "¡Qué hermoso!"];
             speakNurturing(`${compliments[Math.floor(Math.random() * compliments.length)]}... ${letter}`);
             
-            // Lógica de Dopamina: Crear jardín de flores
+            // --- DOPAMINE BLOOM (V16): Sincronización con el Tema ---
             const colorSuccess = getComputedStyle(document.documentElement).getPropertyValue('--success');
             const colorAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-            for(let i=0; i<15; i++) {
-                flowers.push(new Flower(Math.random() * canvas.width, Math.random() * canvas.height, i % 2 === 0 ? colorSuccess : colorAccent));
+            const colorGold = getComputedStyle(document.documentElement).getPropertyValue('--gold');
+            const palette = [colorSuccess, colorAccent, colorGold];
+
+            for(let i=0; i<40; i++) { // Más flores (40)
+                const rx = Math.random() * canvas.width;
+                const ry = Math.random() * canvas.height;
+                const rColor = palette[Math.floor(Math.random() * palette.length)];
+                flowers.push(new Flower(rx, ry, rColor));
             }
 
             setTimeout(() => { currentLetterIndex = (currentLetterIndex + 1) % alphabet.length; resetState(); }, 4000);
@@ -320,7 +328,7 @@
             const colorSuccess = getComputedStyle(document.documentElement).getPropertyValue('--success');
             const colorAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent');
 
-            // Flores de recompensa (Dopamina)
+            // Dibujar flores primero (detrás del trazo)
             flowers.forEach(f => { f.update(); f.draw(); });
 
             if (isSystemReady && !showFlowers && currentTargets[nextTargetIndex]) {
