@@ -20,7 +20,6 @@
         }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        /* --- PANTALLA DE INICIO MÁGICA --- */
         #splashScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--bg); z-index: 200;
@@ -41,13 +40,12 @@
         }
         #splashText { color: var(--ivory); font-family: 'Inter', sans-serif; font-weight: 100; letter-spacing: 5px; font-size: 20px; text-align: center; }
 
-        /* --- UI PRINCIPAL --- */
         #ui { position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 1s; }
         #controls {
             position: absolute; top: 20px; right: 20px; z-index: 101;
-            background: rgba(35, 31, 36, 0.9); padding: 15px; border-radius: 12px;
+            background: rgba(35, 31, 36, 0.95); padding: 15px; border-radius: 12px;
             border: 1px solid var(--gold); display: flex; flex-direction: column; gap: 12px;
-            backdrop-filter: blur(15px); opacity: 0; transition: opacity 1s;
+            backdrop-filter: blur(20px); opacity: 0; transition: opacity 1s;
         }
 
         #letterContainer {
@@ -60,6 +58,11 @@
             color: rgba(155, 142, 108, 0.05); 
             user-select: none; font-weight: 100;
             letter-spacing: -10px;
+            transition: color 0.5s, text-shadow 0.5s;
+        }
+        .letter-guide.active {
+            color: rgba(137, 106, 176, 0.15);
+            text-shadow: 0 0 30px rgba(137, 106, 176, 0.3);
         }
         
         #status { color: var(--accent); font-size: 14px; font-family: 'Courier New', monospace; text-transform: uppercase; }
@@ -68,37 +71,36 @@
         .slider-label { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
         input[type=range] { -webkit-appearance: none; width: 150px; background: transparent; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--accent); border-radius: 2px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--ivory); cursor: pointer; margin-top: -7px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: var(--ivory); cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px var(--accent); }
 
         #resetBtn {
             position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 75px; height: 75px; background-color: var(--ivory); border-radius: 50%;
+            width: 80px; height: 80px; background-color: var(--ivory); border-radius: 50%;
             border: none; box-shadow: 0 0 25px rgba(242, 239, 217, 0.2);
             cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); outline: none; opacity: 0;
         }
         #resetBtn:active { transform: translateX(-50%) scale(0.85); box-shadow: 0 0 40px var(--ivory); }
-        #resetBtn::after { content: '✨'; font-size: 28px; opacity: 0.7; }
+        #resetBtn::after { content: '✨'; font-size: 30px; opacity: 0.8; }
 
         select { background: var(--bg); color: var(--text); border: 1px solid var(--accent); padding: 5px; border-radius: 4px; font-size: 11px; outline: none; }
     </style>
 </head>
 <body>
-    <!-- Pantalla de Inicio -->
     <div id="splashScreen">
         <div id="sigil" onclick="startMagic()"></div>
         <div id="splashText">ENTRAR AL ATELIER</div>
     </div>
 
     <div id="ui">
-        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">TRUE_MAGIC_V12</h1>
+        <h1 style="color: var(--accent); margin: 0; font-size: 18px; letter-spacing: 2px;">PURE_MAGIC_V13</h1>
         <div id="status">INICIANDO...</div>
     </div>
     
     <div id="controls">
         <div class="slider-container">
             <span class="slider-label" id="diffLabel">DIFICULTAD: NORMAL</span>
-            <input type="range" id="diffSlider" min="30" max="180" value="100" step="5">
+            <input type="range" id="diffSlider" min="30" max="220" value="100" step="5">
         </div>
         <select id="langSelect">
             <option value="es-MX">Español (MX)</option>
@@ -129,15 +131,13 @@
         let particles = [];
         let currentLetterIndex = 0;
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-        
         let allStrokes = [];
         let currentStroke = [];
         let currentTargets = [];
         let nextTargetIndex = 0;
-        let detectionThreshold = 100; 
-        let enforceSequence = true;
-        let guidePulse = 0;
+        let detectionThreshold = 150; 
         let isSystemReady = false;
+        let guidePulse = 0;
 
         const LetterSkeletons = {
             'A': [{x:0, y:-0.7}, {x:-0.4, y:0.7}, {x:0, y:-0.7}, {x:0.4, y:0.7}, {x:-0.2, y:0.1}, {x:0.2, y:0.1}],
@@ -178,6 +178,7 @@
             const cy = canvas.height / 2;
             currentTargets = skeleton.map(p => ({ x: cx + p.x * scale, y: cy + p.y * scale, hit: false }));
             nextTargetIndex = 0;
+            guide.classList.remove('active');
         }
 
         class Particle {
@@ -196,26 +197,30 @@
             }
         }
 
+        // --- TTS MEJORADO (V13) ---
+        let voices = [];
+        function loadVoices() { voices = window.speechSynthesis.getVoices(); }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+
         function speakNurturing(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
             const preferredVoices = ["Monica", "Paulina", "Google Español", "Luciana", "Microsoft Sabina"];
             const voice = voices.find(v => preferredVoices.some(p => v.name.includes(p)) && v.lang.includes("es"));
             if (voice) utterance.voice = voice;
-            utterance.pitch = 1.4; utterance.rate = 0.75; utterance.lang = "es-MX";
+            utterance.pitch = 1.4; utterance.rate = 0.8; utterance.lang = "es-MX";
             window.speechSynthesis.speak(utterance);
         }
 
         function startMagic() {
             isSystemReady = true;
+            loadVoices();
             splashScreen.style.opacity = '0';
             setTimeout(() => {
                 splashScreen.style.visibility = 'hidden';
-                ui.style.opacity = '1';
-                controls.style.opacity = '1';
-                resetBtn.style.opacity = '1';
+                ui.style.opacity = '1'; controls.style.opacity = '1'; resetBtn.style.opacity = '1';
                 status.innerText = "TEJE LA LUZ";
+                initLetterTargets(); // Asegurar inicio
                 speakNurturing("¡Hola! Vamos a tejer magia juntos.");
             }, 1000);
         }
@@ -224,11 +229,14 @@
             if (!isSystemReady) return;
             const target = currentTargets[nextTargetIndex];
             if (!target) return;
-            const dist = Math.hypot(x - target.x, y - target.y);
-            if (dist < detectionThreshold) {
+            if (Math.hypot(x - target.x, y - target.y) < detectionThreshold) {
                 target.hit = true;
                 nextTargetIndex++;
                 for(let i=0; i<15; i++) particles.push(new Particle(target.x, target.y, '#a8b28a', 0.8));
+                
+                // Efecto de iluminación progresiva
+                if (nextTargetIndex > currentTargets.length / 2) guide.classList.add('active');
+                
                 if (nextTargetIndex >= currentTargets.length) completeHechizo();
             }
         }
@@ -236,10 +244,10 @@
         function completeHechizo() {
             if (status.innerText.includes("¡QUÉ")) return;
             const letter = alphabet[currentLetterIndex];
-            status.innerText = `✨ ¡QUÉ BONITO! LETRA ${letter} ✨`;
+            status.innerText = `✨ ¡PRECIOSO! ${letter} ✨`;
             const compliments = ["¡Qué maravilla!", "¡Muy bien!", "¡Lo hiciste genial!", "¡Precioso!", "¡Qué hermoso!"];
             const chosen = compliments[Math.floor(Math.random() * compliments.length)];
-            speakNurturing(`${chosen}... Letra ${letter}`);
+            speakNurturing(`${chosen}... ${letter}`);
             for(let i=0; i<150; i++) particles.push(new Particle(canvas.width/2, canvas.height/2, '#a8b28a', 3));
             setTimeout(() => {
                 currentLetterIndex = (currentLetterIndex + 1) % alphabet.length;
@@ -256,13 +264,15 @@
 
         function handleInput(e) {
             e.preventDefault();
-            if (!isSystemReady || !drawing) return;
+            if (!isSystemReady) return;
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
             const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-            currentStroke.push({x, y});
-            checkCompletion(x, y);
-            for(let i=0; i<2; i++) particles.push(new Particle(x, y, '#f2efd9', 0.8, true));
+            if (drawing) {
+                currentStroke.push({x, y});
+                checkCompletion(x, y);
+                for(let i=0; i<2; i++) particles.push(new Particle(x, y, '#f2efd9', 0.8, true));
+            }
         }
 
         function drawEverything() {
@@ -270,8 +280,9 @@
             if (isSystemReady && currentTargets[nextTargetIndex]) {
                 const target = currentTargets[nextTargetIndex];
                 guidePulse += 0.06;
-                const size = 25 + Math.sin(guidePulse) * 10;
-                ctx.save(); ctx.shadowBlur = 40; ctx.shadowColor = '#a8b28a';
+                const size = 30 + Math.sin(guidePulse) * 12;
+                ctx.save();
+                ctx.shadowBlur = 40; ctx.shadowColor = '#a8b28a';
                 ctx.fillStyle = 'rgba(168, 178, 138, 0.6)';
                 ctx.beginPath(); ctx.arc(target.x, target.y, size, 0, Math.PI * 2); ctx.fill();
                 if (currentTargets[nextTargetIndex + 1]) {
@@ -279,13 +290,13 @@
                     const angle = Math.atan2(next.y - target.y, next.x - target.x);
                     ctx.strokeStyle = 'rgba(168, 178, 138, 0.4)'; ctx.lineWidth = 4;
                     ctx.beginPath(); ctx.moveTo(target.x, target.y);
-                    ctx.lineTo(target.x + Math.cos(angle) * 60, target.y + Math.sin(angle) * 60); ctx.stroke();
+                    ctx.lineTo(target.x + Math.cos(angle) * 70, target.y + Math.sin(angle) * 70); ctx.stroke();
                 }
                 ctx.restore();
             }
             ctx.lineJoin = 'round'; ctx.lineCap = 'round';
             ctx.shadowBlur = 25; ctx.shadowColor = 'rgba(137, 106, 176, 0.6)';
-            ctx.strokeStyle = '#896ab0'; ctx.lineWidth = 10;
+            ctx.strokeStyle = '#896ab0'; ctx.lineWidth = 12;
             [...allStrokes, currentStroke].forEach(stroke => {
                 if (stroke.length < 2) return;
                 ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
@@ -301,8 +312,9 @@
 
         diffSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
-            detectionThreshold = 250 - val;
-            let label = "NORMAL"; if (val < 70) label = "FÁCIL"; if (val > 140) label = "DIFÍCIL";
+            // Calibración agresiva: Fácil = 250px (mitad de letra), Difícil = 30px (punto exacto)
+            detectionThreshold = 280 - val;
+            let label = "NORMAL"; if (val < 80) label = "FÁCIL"; if (val > 160) label = "DIFÍCIL";
             diffLabel.innerText = `DIFICULTAD: ${label}`;
         });
 
