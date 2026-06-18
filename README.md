@@ -6,9 +6,9 @@ Basada en el sistema de magia de *Witch Hat Atelier*, esta herramienta transform
 ## ✨ Características Principales
 - **Interfaz "Zen" con Refuerzo de Dopamina:** Al completar cada letra, el fondo florece con una animación dinámica para celebrar el logro del niño.
 - **Control Total del Usuario:** La magia solo se activa cuando el niño termina su trazo y retira el dedo o lápiz de la pantalla, respetando su ritmo y flujo creativo.
-- **Detección Secuencial Unidireccional:** El sistema guía al niño para trazar la letra en el orden correcto (arriba-abajo, izquierda-derecha).
-- **Refuerzo Fonético Afectuoso:** Una voz cálida y personalizada felicita al niño antes de mencionar la letra, eliminando cualquier robotización técnica.
-- **Soporte Multilingüe:** Configuración instantánea para Español (MX) e Inglés (US).
+- **Detección Secuencial Unidireccional Auditada:** El sistema guía al niño para trazar la letra en el orden correcto. Se corrigieron los esqueletos vectoriales de las letras `G`, `Q`, `R` y `S` para garantizar trazos continuos y fluidos sin bloqueos.
+- **Refuerzo Fonético Afectuoso y Natural:** Una voz cálida con tono y velocidad infantil (calibración humanizada) felicita al niño y nombra la letra formateada en minúsculas, evitando la molesta lectura de "mayúscula" típica de los motores TTS.
+- **Soporte Multilingüe Adaptativo:** Soporte nativo para Español (MX) e Inglés (US) con autodetección de idioma basada en el navegador del usuario y traducción dinámica en tiempo real de todos los textos de la interfaz.
 
 ## 🎨 Guía Terapéutica de Colores
 La herramienta incluye un **Selector de Temas (🎨)** diseñado para adaptarse a diferentes perfiles sensoriales:
